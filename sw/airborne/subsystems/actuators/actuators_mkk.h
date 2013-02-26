@@ -33,6 +33,10 @@
 
 
 struct ActuatorsMkk {
+  bool_t   actuators_delay_done;    // mkk_config module wants to know state
+#ifdef ACTUATORS_MKK_V2_PROTOCOL
+  uint16_t setpoint[ACTUATORS_MKK_NB];
+#endif
   struct i2c_transaction trans[ACTUATORS_MKK_NB];
 };
 
@@ -41,7 +45,11 @@ extern struct ActuatorsMkk actuators_mkk;
 extern void actuators_mkk_init(void);
 extern void actuators_mkk_set(void);
 
+#ifdef ACTUATORS_MKK_V2_PROTOCOL
+#define ActuatorMkkSet(_i, _v) { actuators_mkk.setpoint[_i] = _v; }
+#else
 #define ActuatorMkkSet(_i, _v) { actuators_mkk.trans[_i].buf[0] = _v; }
+#endif
 #define ActuatorsMkkInit() actuators_mkk_init()
 #define ActuatorsMkkCommit() actuators_mkk_set()
 

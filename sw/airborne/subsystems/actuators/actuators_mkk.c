@@ -32,16 +32,18 @@
 
 struct ActuatorsMkk actuators_mkk;
 
-
 uint32_t actuators_delay_time;
-bool_t   actuators_delay_done;
 
 void actuators_mkk_init(void) {
 
   const uint8_t actuators_addr[ACTUATORS_MKK_NB] = ACTUATORS_MKK_ADDR;
   for (uint8_t i=0; i<ACTUATORS_MKK_NB; i++) {
     actuators_mkk.trans[i].type = I2CTransTx;
+#ifdef ACTUATORS_MKK_V2_PROTOCOL
+    actuators_mkk.trans[i].len_w = 2;
+#else
     actuators_mkk.trans[i].len_w = 1;
+#endif
     actuators_mkk.trans[i].slave_addr = actuators_addr[i];
     actuators_mkk.trans[i].status = I2CTransSuccess;
   }
@@ -59,16 +61,26 @@ void actuators_mkk_init(void) {
 
 void actuators_mkk_set(void) {
 #if defined ACTUATORS_START_DELAY && ! defined SITL
-  if (!actuators_delay_done) {
-    if (SysTimeTimer(actuators_delay_time) < USEC_OF_SEC(ACTUATORS_START_DELAY)) return;
-    else actuators_delay_done = TRUE;
+  if (!actuators_mkk.actuators_delay_done) {
+    if (SysTimeTimer(actuators_mkk.actuators_delay_time) < USEC_OF_SEC(ACTUATORS_START_DELAY)) return;
+    else actuators_mkk.actuators_delay_done = TRUE;
   }
 #endif
 
   for (uint8_t i=0; i<ACTUATORS_MKK_NB; i++) {
+
+#ifdef ACTUATORS_MKK_V2_PROTOCOL
+    actuators_mkk.trans[i].buf[0] = (actuators_mkk.setpoint[i] >> 3);
+    actuators_mkk.trans[i].buf[1] = actuators_mkk.setpoint[i] & 0x07;
+#endif
+
 #ifdef KILL_MOTORS
     actuators_mkk.trans[i].buf[0] = 0;
+#ifdef ACTUATORS_MKK_V2_PROTOCOL
+    actuators_mkk.trans[i].buf[1] = 0;
 #endif
+#endif
+
     i2c_submit(&ACTUATORS_MKK_DEVICE, &actuators_mkk.trans[i]);
   }
 }
